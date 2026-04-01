@@ -1,0 +1,20 @@
+{
+  "name": "حاسبة تسعير الدهانات - الإمارات",
+  "short_name": "حاسبة الدهانات",
+  "description": "حاسبة تسعير متقدمة للدهانات الداخلية والخارجية في دولة الإمارات العربية المتحدة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["business", "utilities"]
+}
