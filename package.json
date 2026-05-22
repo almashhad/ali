@@ -1,0 +1,12 @@
+{
+  "name": "vibe-perfumes-gemini",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build:md": "node build-md.mjs",
+    "generate": "node generate.mjs",
+    "generate:top5": "node generate.mjs --from 1 --to 6"
+  }
+}
