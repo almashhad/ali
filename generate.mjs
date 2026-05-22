@@ -25,7 +25,8 @@ function loadEnv() {
 loadEnv();
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-image';
+const MODEL = process.env.GEMINI_MODEL || 'imagen-4.0-generate-001';
+const ASPECT_RATIO = process.env.ASPECT_RATIO || '16:9';
 const OUT_DIR = process.env.OUT_DIR || 'images';
 const REQUESTS_PER_MIN = Number(process.env.REQUESTS_PER_MIN || 6);
 
@@ -65,13 +66,31 @@ console.log(`Model: ${MODEL}`);
 console.log(`Pacing: ${REQUESTS_PER_MIN} requests/minute`);
 console.log(`Generating ${selected.length} of ${prompts.length} images → ./${OUT_DIR}/\n`);
 
-// --- Gemini call ---------------------------------------------------------------
+// --- Gemini / Imagen call ------------------------------------------------------
+// Imagen models use :predict with instances+parameters.
+// Gemini Flash Image models use :generateContent with contents+generationConfig.
+const isImagen = MODEL.startsWith('imagen-');
+
 async function generateOne(p) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-  const body = {
-    contents: [{ parts: [{ text: p.prompt }] }],
-    generationConfig: { responseModalities: ['IMAGE'] },
-  };
+  let url, body, extractB64;
+  if (isImagen) {
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:predict?key=${API_KEY}`;
+    body = {
+      instances: [{ prompt: p.prompt }],
+      parameters: { sampleCount: 1, aspectRatio: ASPECT_RATIO },
+    };
+    extractB64 = data => data?.predictions?.[0]?.bytesBase64Encoded;
+  } else {
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
+    body = {
+      contents: [{ parts: [{ text: p.prompt }] }],
+      generationConfig: { responseModalities: ['IMAGE'] },
+    };
+    extractB64 = data => {
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      return parts.find(x => x.inlineData?.data)?.inlineData?.data;
+    };
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -82,10 +101,9 @@ async function generateOne(p) {
     throw new Error(`HTTP ${res.status}: ${txt.slice(0, 400)}`);
   }
   const data = await res.json();
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  const imgPart = parts.find(x => x.inlineData?.data);
-  if (!imgPart) throw new Error('No image in response: ' + JSON.stringify(data).slice(0, 400));
-  const buf = Buffer.from(imgPart.inlineData.data, 'base64');
+  const b64 = extractB64(data);
+  if (!b64) throw new Error('No image in response: ' + JSON.stringify(data).slice(0, 400));
+  const buf = Buffer.from(b64, 'base64');
   const filePath = path.join(OUT_DIR, p.filename);
   fs.writeFileSync(filePath, buf);
   return filePath;
